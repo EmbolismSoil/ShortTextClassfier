@@ -7,7 +7,7 @@
 
 #include "ChiSquareKeyWordExtractor.h"
 #include "StopWordFilter.h"
-#include <algorithm>    // std::random_shuffle
+#include <algorithm>
 #include <iostream>
 
 int myrandom (int i) { return std::rand()%i;}
@@ -34,7 +34,7 @@ int main(void)
 	ChiSquareKeyWordExtractor kw_extractor(filtered_data);
 
 	fpos = filtered_data.begin();
-	std::random_shuffle ( filtered_data.begin(), filtered_data.end(), myrandom);
+	//std::random_shuffle ( filtered_data.begin(), filtered_data.end(), myrandom);
 
 	for (; fpos != filtered_data.begin() + 10; ++fpos){
 		std::vector<std::pair<std::string, double> > kws = kw_extractor.get_top_keywords(filter.filter(fpos->first), 10);

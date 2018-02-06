@@ -10,16 +10,28 @@
 
 #include <vector>
 #include <string>
-
+#include "KeyWordExtractor.h"
+#include <boost/shared_ptr.hpp>
+#include "WordVectorStorage.h"
 
 template<class FT, class CT>
 class SmsClassifier {
 public:
-	SmsClassifier();
+	SmsClassifier(boost::shared_ptr<KeyWordExtractor> extractor,
+					boost::shared_ptr<WordVectorStorage> wvec_stroage):
+		_extractor(extractor),
+		_wvec_stroage(wvec_stroage)
+   {
+
+   }
+
 	virtual ~SmsClassifier();
-	virtual CT const classify(std::vector<FT> const& features);
-	virtual void train(std::vector<std::pair<std::string, CT> > const& data);
-	virtual void train(std::string const& csv_path);
+	virtual void train(std::vector<std::pair<std::vector<FT>, CT> > const& ) = 0;
+	virtual CT const predict(std::vector<FT> const&) = 0;
+
+private:
+	boost::shared_ptr<KeyWordExtractor> _extractor;
+	boost::shared_ptr<WordVectorStorage> _wvec_stroage;
 };
 
 #endif /* SMSCLASSIFIER_H_ */

@@ -15,9 +15,14 @@
 
 int myrandom (int i) { return std::rand()%i;}
 
+#define VAR(var) #var << " = " << var
 
-int main(void)
+int main(int argc, const char* argv[])
 {
+	if (argc != 3){
+		std::cout << "proc <sms>" << std::endl;
+		return -1;
+	}
 	CSVSampleDataReader reader_307("./sample_309.csv");
 	CSVSampleDataReader reader_309("./sample_307.csv");
 
@@ -40,21 +45,17 @@ int main(void)
 		filtered_data.push_back(std::make_pair(filted_sms, fpos->second));
 	}
 
+	int n = ::atoi(argv[2]);
 	ChiSquareKeyWordExtractor kw_extractor(filtered_data, 2);
-	std::vector<std::pair<std::string, double> > kws = kw_extractor.get_top_keywords(filter.filter("亲，想 请您來 帮 淘宝店  唰销 量 一笔 給您28元  （保底350/天）酬劳 都是現结  加QQ: 1772340225 咨询 详 情"), 10);
+	std::vector<std::pair<std::string, double> > kws =
+			kw_extractor.get_top_keywords(filter.filter(argv[1]), n);
 
-	WordVectorJsonStorage<double> stroage("model.json");
+	//WordVectorJsonStorage<double> stroage("model.json");
 
-	CSVSampleDataReader reader_test("./sample.csv");
-	std::vector<std::pair<std::string, int> > test_date = reader_test.parse();
-	fpos = data.begin();
 	std::vector<std::pair<std::string, double> >::const_iterator pos = kws.begin();
 	for (; pos != kws.end(); ++pos){
-		std::string vec_str = stroage.get_wvec_as_string(pos->first);
-		std::cout  << "<" << pos->first << ", " << pos->second << "> : "<< vec_str << std::endl;
+		std::cout  << "<" << pos->first << ", " << pos->second << ">" << std::endl;
 	}
 	 std::cout << std::endl;
-
-
     return 0;
 }

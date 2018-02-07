@@ -95,11 +95,10 @@ public:
 			uint64_t D = _not_contain_words[*pos][0];
 			double chi = _CHI(A, B , C, D);
 #else
-			if (_mat.find(*pos) == _mat.end()){
+			double chi = _CHI(*pos);
+			if (chi < 0){
 				continue;
 			}
-			std::vector<std::vector<uint64_t> > const& mat = _mat[*pos];
-			double chi = _CHI(mat, _N);
 #endif
 
 			if (result.size() >= k){
@@ -119,6 +118,16 @@ public:
 		}
 
 		return result;
+	}
+
+	virtual double const get_chi(std::string const& word)
+	{
+		return _CHI(word);
+	}
+
+	virtual std::vector<std::vector<uint64_t> > const& get_mat(std::string const& word)
+	{
+		return _mat[word];
 	}
 
 	virtual ~ChiSquareKeyWordExtractor(){};
@@ -142,6 +151,11 @@ private:
 
 		std::vector<std::vector<uint64_t> > const& mat = _mat[word];
 		double chi = _CHI(mat, _N);
+		double idf = _idf(word);
+		if (idf > 0){
+			return chi * idf;
+		}
+
 		return chi;
 	}
 
@@ -183,6 +197,19 @@ private:
 		}
 
 		return chi;
+	}
+
+	double _idf(std::string const& word)
+	{
+		if (_mat.find(word) == _mat.end()){
+			return -1.0;
+		}else{
+			uint64_t x_sum = 0;
+			uint64_t y_sum = 0;
+			_get_sum(_mat[word], 0, 0, x_sum, y_sum);
+			double idf = 1.0 / ::log(double(_N)/double(x_sum));
+			return idf;
+		}
 	}
 
 	void _get_sum(std::vector<std::vector<uint64_t> > const& mat,

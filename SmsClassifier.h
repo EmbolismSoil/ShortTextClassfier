@@ -18,7 +18,7 @@ template<class FT, class CT>
 class SmsClassifier {
 public:
 	SmsClassifier(boost::shared_ptr<KeyWordExtractor> extractor,
-					boost::shared_ptr<WordVectorStorage> wvec_stroage):
+					boost::shared_ptr<WordVectorStorage<FT> > wvec_stroage):
 		_extractor(extractor),
 		_wvec_stroage(wvec_stroage)
    {
@@ -31,7 +31,7 @@ public:
 
 private:
 	boost::shared_ptr<KeyWordExtractor> _extractor;
-	boost::shared_ptr<WordVectorStorage> _wvec_stroage;
+	boost::shared_ptr<WordVectorStorage<FT> > _wvec_stroage;
 };
 
 #endif /* SMSCLASSIFIER_H_ */

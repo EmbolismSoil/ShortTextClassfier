@@ -36,30 +36,76 @@
  *    CHI = N*(A*D-B*C) / (A+B)*(A+C)*(B+D)*(C+D)
  *    其中class 1, class 2 必须要是连续的整数
  * */
+
+#define __BIN_CLS__ 0
+
 class ChiSquareKeyWordExtractor : private boost::noncopyable {
 public:
-	typedef bool CT;
-	ChiSquareKeyWordExtractor(std::vector<std::pair<std::string, CT> > const& data)
+	typedef int CT;
+	ChiSquareKeyWordExtractor(std::vector<std::pair<std::string, CT> > const& data, uint64_t cls):
+		_N(data.size()),
+		_cls(cls)
 	{
 		_jieba = JieBaFactory::get_jieba("default");
+#if __BIN_CLS__
 		_do_init(data);
+#else
+		_do_init_mat(data);
+#endif
 	}
 
-	virtual std::vector<std::pair<std::string, double> > get_top_keywords(std::string const& sms, uint64_t k, bool order=false)
+	virtual std::vector<std::pair<std::string, double> > get_threshold_keywords(std::string const& sms, double threshold)
 	{
 		std::vector<std::string> words;
 		_jieba->Cut(sms, words, true);
 
 		std::vector<std::pair<std::string, double> > result;
-		std::vector<std::string>::const_iterator pos = words.begin();
+		std::set<std::string> uique_words(words.begin(), words.end());
+		std::set<std::string>::const_iterator pos = uique_words.begin();
 
-		for (; pos != words.end(); ++pos){
+		double chi = 0.0;
+		for (; pos != uique_words.end(); ++pos){
+			if ((chi = _CHI(*pos)) < 0){
+				continue;
+			}
+
+			if (chi < threshold){
+				result.push_back(std::make_pair(*pos, chi));
+			}
+		}
+
+		return result;
+	}
+
+	virtual std::vector<std::pair<std::string, double> > get_top_keywords(std::string const& sms, uint64_t k)
+	{
+		std::vector<std::string> words;
+		_jieba->Cut(sms, words, true);
+
+		std::vector<std::pair<std::string, double> > result;
+		std::set<std::string> uique_words(words.begin(), words.end());
+		std::set<std::string>::const_iterator pos = uique_words.begin();
+
+		for (; pos != uique_words.end(); ++pos){
+
+#if __BIN_CLS__
 			uint64_t A = _contain_words[*pos][1];
 			uint64_t B = _contain_words[*pos][0];
 			uint64_t C = _not_contain_words[*pos][1];
 			uint64_t D = _not_contain_words[*pos][0];
-
-			double chi = _CHI(A, B, C, D);
+			double chi = _CHI(A, B , C, D);
+#else
+			if (_mat.find(*pos) == _mat.end()){
+				continue;
+			}
+			std::vector<std::vector<uint64_t> > const& mat = _mat[*pos];
+			uint64_t A = mat[0][0];
+			uint64_t B = mat[0][1];
+			uint64_t C = mat[1][0];
+			uint64_t D = mat[1][1];
+			double chi = _CHI(A, B , C, D);
+			//double chi = _CHI(mat, _N);
+#endif
 
 			if (result.size() >= k){
 				std::vector<std::pair<std::string, double> >::iterator rpos = result.begin();
@@ -77,9 +123,6 @@ public:
 			}
 		}
 
-		if (order){
-			std::sort(result.begin(), result.end(), &ChiSquareKeyWordExtractor::_chi_pair_comparetor);
-		}
 		return result;
 	}
 
@@ -93,11 +136,24 @@ private:
 	boost::unordered_map<CT, uint64_t> _cls_cnt;
 	std::vector<std::string> _words;
 	boost::unordered_map<std::string, std::vector<std::vector<uint64_t> > > _mat;
+	uint64_t _N;
+	uint64_t _cls;
+
+	double _CHI(std::string const& word)
+	{
+		if (_mat.find(word) == _mat.end()){
+			return -1.0;
+		}
+
+		std::vector<std::vector<uint64_t> > const& mat = _mat[word];
+		double chi = _CHI(mat, _N);
+		return chi;
+	}
 
 	double _CHI(uint64_t A, uint64_t B, uint64_t C, uint64_t D)
 	{
 		uint64_t N = A + B + C + D;
-		uint64_t above = (N * (A*D-B*C));
+		uint64_t above = (N * (A*D-B*C) * (A*D-B*C));
 		uint64_t btm = ( (A+B)*(A+C)*(B+D)*(C+D));
 
 		if (above == 0){
@@ -114,12 +170,13 @@ private:
 		double chi = 0;
 		double dn = N;
 		for (size_t x = 0; x < mat.size(); ++x){
-			for (size_t y = 0; y < mat.size(); ++y){
+			for (size_t y = 0; y < mat[0].size(); ++y){
 				uint64_t x_sum = 0;
 				uint64_t y_sum = 0;
 				_get_sum(mat, x, y, x_sum, y_sum);
 				double v = double(x_sum*y_sum) / double(dn); //计算理论值
 				double error = v - double(mat[x][y]); //计算误差
+				error *= error;
 				if (error == 0){
 					continue;
 				}else if (v == 0){
@@ -150,8 +207,7 @@ private:
 
 		for (; pos != data.end(); ++pos){
 			std::pair<std::string, CT> sms = *pos;
-			std::string content;
-			content.swap(sms.first);
+			std::string content(sms.first);
 			CT cls = sms.second;
 			std::vector<std::string> words;
 
@@ -190,7 +246,7 @@ private:
 	void _do_init_mat(std::vector<std::pair<std::string, CT> > const& data)
 	{
 		std::vector<std::pair<std::string, CT> >::const_iterator pos = data.begin();
-		for (; pos != data.begin(); ++pos){
+		for (; pos != data.end(); ++pos){
 			_update_mat(*pos);
 		}
 
@@ -198,7 +254,10 @@ private:
 		for (; mpos != _mat.end(); ++mpos){
 			std::vector<std::vector<uint64_t> > &mat = mpos->second;
 			for (size_t cls = 0; cls < mat.size(); ++cls){
-				mat[1][cls] = _cls_cnt[cls] - mat[0][cls];
+				uint64_t cls_cnt = _cls_cnt[cls];
+				uint64_t contain_cnt = mat[0][cls];
+
+				mat[1][cls] = cls_cnt - contain_cnt;
 			}
 		}
 	}
@@ -222,10 +281,8 @@ private:
 			//初始化卡方矩阵为2*cls
 			if (w_mat.empty()){
 				w_mat.resize(2);
-			}
-
-			if (w_mat[0].size() < cls){ //
-				w_mat[0].resize(cls, 0);
+				w_mat[0].resize(_cls, 0);
+				w_mat[1].resize(_cls, 0);
 			}
 
 			w_mat[0][cls] += 1;

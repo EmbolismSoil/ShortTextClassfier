@@ -24,9 +24,9 @@ public:
 
 	}
 
-	std::vector<std::pair<std::string, bool> > parse()
+	std::vector<std::pair<std::string, int> > parse()
 	{
-		std::vector<std::pair<std::string, bool> > result;
+		std::vector<std::pair<std::string, int> > result;
 		std::string line;
 		while(std::getline(_f, line)){
 			boost::replace_all(line, "\r", "");
@@ -43,9 +43,9 @@ public:
 
 			boost::trim(sms);
 			boost::trim(cls);
-			int int_cls = false;
-			if (cls != "false"){
-				int_cls = true;
+			int int_cls = 0;
+			if (cls != "0"){
+				int_cls = 1;
 			}
 			result.push_back(std::make_pair(sms, int_cls));
 		}

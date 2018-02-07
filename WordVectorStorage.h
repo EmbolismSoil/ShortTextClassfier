@@ -12,10 +12,11 @@
 #include <stdint.h>
 #include <vector>
 
+template<class T>
 class WordVectorStorage{
 public:
 	virtual ~WordVectorStorage(){}
-	virtual std::vector<int64_t> const get_word_vector(std::string const& sms) = 0;
+	virtual std::vector<T> const get_wvec(std::string const& sms) = 0;
 };
 
 #endif /* WORDVECTORSTORAGE_H_ */

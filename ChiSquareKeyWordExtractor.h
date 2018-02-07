@@ -20,7 +20,9 @@
 #include <functional>
 #include <algorithm>
 #include <numeric>
-
+#include <leveldb/db.h>
+#include <assert.h>
+#include <json/json.h>
 /*
  * 卡方检验特征提取算法:
  *  +------------------+---------+---------+-----+
@@ -52,6 +54,69 @@ public:
 #else
 		_do_init_mat(data);
 #endif
+	}
+
+	ChiSquareKeyWordExtractor(boost::unordered_map<std::string, std::vector<std::vector<uint64_t> > > const& mat)
+	{
+		if (mat.empty()){
+			throw std::invalid_argument("mat is empty");
+		}
+
+		_mat = mat;
+		_cls = mat.begin()->second.size();
+		_N = mat.size();
+	}
+
+	static boost::shared_ptr<ChiSquareKeyWordExtractor> load(std::string const& path, std::string const& name)
+	{
+		leveldb::DB* db;
+		leveldb::Options opts;
+		opts.create_if_missing = false;
+		leveldb::Status status = leveldb::DB::Open(opts, path, &db);
+		if (!status.ok()){
+			throw std::invalid_argument(status.ToString());
+		}
+
+		std::string model;
+		status = db->Get(leveldb::ReadOptions(), name, &model);
+
+		if (!status.ok()){
+			throw std::invalid_argument(status.ToString());
+		}
+
+		std::vector<std::vector<uint64_t> > mat;
+		parse_mat(model, mat);
+		if (mat.empty()){
+			throw std::invalid_argument("model is empty");
+		}
+
+		boost::shared_ptr<ChiSquareKeyWordExtractor> extractor(new ChiSquareKeyWordExtractor());
+	}
+
+	static void parse_mat(std::string const& json, std::vector<std::vector<uint64_t> > const& mat)
+	{
+		Json::Reader reader;
+		Json::Value root;
+
+		if (!reader.parse(json, root)){
+			throw std::invalid_argument("json format eror");
+		}
+
+		if (!root.isArray()){
+			throw std::invalid_argument("json format eror");
+		}
+
+		for (Json::Value::const_iterator pos = root.begin(); pos != root.end(); ++pos){
+			if (!pos->isArray()){
+				throw std::invalid_argument("json format eror");
+			}else{
+			    std::vector<uint64_t> vec;
+			    for (Json::Value::const_iterator vpos = pos->begin(); vpos != pos->end(); ++vpos){
+			    	vec.push_back(vpos->asUInt64());
+			    }
+			    mat.push_back(vec);
+			}
+		}
 	}
 
 	virtual std::vector<std::pair<std::string, double> > get_threshold_keywords(std::string const& sms, double threshold)

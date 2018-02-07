@@ -99,12 +99,7 @@ public:
 				continue;
 			}
 			std::vector<std::vector<uint64_t> > const& mat = _mat[*pos];
-			uint64_t A = mat[0][0];
-			uint64_t B = mat[0][1];
-			uint64_t C = mat[1][0];
-			uint64_t D = mat[1][1];
-			double chi = _CHI(A, B , C, D);
-			//double chi = _CHI(mat, _N);
+			double chi = _CHI(mat, _N);
 #endif
 
 			if (result.size() >= k){

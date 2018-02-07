@@ -23,6 +23,7 @@
 #include <leveldb/db.h>
 #include <assert.h>
 #include <json/json.h>
+#include <boost/scoped_ptr.hpp>
 /*
  * 卡方检验特征提取算法:
  *  +------------------+---------+---------+-----+
@@ -56,19 +57,9 @@ public:
 #endif
 	}
 
-	ChiSquareKeyWordExtractor(boost::unordered_map<std::string, std::vector<std::vector<uint64_t> > > const& mat)
+	static boost::shared_ptr<ChiSquareKeyWordExtractor> load(std::string const& path)
 	{
-		if (mat.empty()){
-			throw std::invalid_argument("mat is empty");
-		}
 
-		_mat = mat;
-		_cls = mat.begin()->second.size();
-		_N = mat.size();
-	}
-
-	static boost::shared_ptr<ChiSquareKeyWordExtractor> load(std::string const& path, std::string const& name)
-	{
 		leveldb::DB* db;
 		leveldb::Options opts;
 		opts.create_if_missing = false;
@@ -77,45 +68,57 @@ public:
 			throw std::invalid_argument(status.ToString());
 		}
 
-		std::string model;
-		status = db->Get(leveldb::ReadOptions(), name, &model);
+		boost::scoped_ptr<leveldb::DB> db_guard(db);
 
+		uint64_t N = 0;
+		std::string N_str;
+		db->Get(leveldb::ReadOptions(), "ChiSquareKeyWordExtractor::_N", &N_str);
+		std::stringstream sN;
+		sN << N_str;
+		sN >> N;
+
+		leveldb::Iterator* it = db->NewIterator(leveldb::ReadOptions());
+		boost::unordered_map<std::string, std::vector<std::vector<uint64_t> > > mat;
+
+		for (it->SeekToFirst(); it->Valid(); it->Next()){
+			std::string word(it->key().ToString());
+			if (word == "ChiSquareKeyWordExtractor::_N"){
+				continue;
+			}
+
+			std::string model(it->value().ToString());
+			std::vector<std::vector<uint64_t> > wmat;
+
+			_parse_mat(model, wmat);
+			if (wmat.empty()){
+				throw std::invalid_argument("model is empty");
+			}
+
+			mat[word] = wmat;
+		}
+
+		boost::shared_ptr<ChiSquareKeyWordExtractor> extractor(new ChiSquareKeyWordExtractor(mat, N));
+		return extractor;
+	}
+
+	void save(std::string const& path)
+	{
+		leveldb::DB* db;
+		leveldb::Options opts;
+		opts.create_if_missing = true;
+		leveldb::Status status = leveldb::DB::Open(opts, path, &db);
 		if (!status.ok()){
 			throw std::invalid_argument(status.ToString());
 		}
 
-		std::vector<std::vector<uint64_t> > mat;
-		parse_mat(model, mat);
-		if (mat.empty()){
-			throw std::invalid_argument("model is empty");
-		}
-
-		boost::shared_ptr<ChiSquareKeyWordExtractor> extractor(new ChiSquareKeyWordExtractor());
-	}
-
-	static void parse_mat(std::string const& json, std::vector<std::vector<uint64_t> > const& mat)
-	{
-		Json::Reader reader;
-		Json::Value root;
-
-		if (!reader.parse(json, root)){
-			throw std::invalid_argument("json format eror");
-		}
-
-		if (!root.isArray()){
-			throw std::invalid_argument("json format eror");
-		}
-
-		for (Json::Value::const_iterator pos = root.begin(); pos != root.end(); ++pos){
-			if (!pos->isArray()){
-				throw std::invalid_argument("json format eror");
-			}else{
-			    std::vector<uint64_t> vec;
-			    for (Json::Value::const_iterator vpos = pos->begin(); vpos != pos->end(); ++vpos){
-			    	vec.push_back(vpos->asUInt64());
-			    }
-			    mat.push_back(vec);
-			}
+		std::stringstream N;
+		N << _N;
+		db->Put(leveldb::WriteOptions(), "ChiSquareKeyWordExtractor::_N", N.str());
+		boost::scoped_ptr<leveldb::DB> db_guard(db);
+		boost::unordered_map<std::string, std::vector<std::vector<uint64_t> > >::const_iterator pos = _mat.begin();
+		for (; pos != _mat.end(); ++pos){
+			std::string json_mat = _json_dump_mat(pos->second);
+			db->Put(leveldb::WriteOptions(), pos->first, json_mat);
 		}
 	}
 
@@ -207,6 +210,18 @@ private:
 	boost::unordered_map<std::string, std::vector<std::vector<uint64_t> > > _mat;
 	uint64_t _N;
 	uint64_t _cls;
+
+	ChiSquareKeyWordExtractor(boost::unordered_map<std::string, std::vector<std::vector<uint64_t> > > const& mat, uint64_t const N):
+		_N(N)
+	{
+		if (mat.empty()){
+			throw std::invalid_argument("mat is empty");
+		}
+
+		_jieba = JieBaFactory::get_jieba("default");
+		_mat = mat;
+		_cls = mat.begin()->second.size();
+	}
 
 	double _CHI(std::string const& word)
 	{
@@ -380,6 +395,60 @@ private:
 	{
 		return lhs.second < rhs.second;
 	}
+
+
+	static std::string _json_dump_mat(std::vector<std::vector<uint64_t> > const& mat)
+	{
+	    Json::FastWriter writer;
+
+		if (mat.empty()){
+			throw std::invalid_argument("mat is empty");
+		}
+
+		Json::Value json_mat;
+		std::vector<std::vector<uint64_t> >::const_iterator pos = mat.begin();
+
+		for ( ; pos != mat.end(); ++pos){
+			if (pos->empty()){
+				throw std::invalid_argument("vec is empty");
+			}
+			Json::Value json_vec;
+			for (std::vector<uint64_t>::const_iterator vpos = pos->begin(); vpos != pos->end(); ++vpos){
+				json_vec.append(*vpos);
+			}
+
+			json_mat.append(json_vec);
+		}
+
+		return writer.write(json_mat);
+	}
+
+	static void _parse_mat(std::string const& json, std::vector<std::vector<uint64_t> > & mat)
+	{
+		Json::Reader reader;
+		Json::Value root;
+
+		if (!reader.parse(json, root)){
+			throw std::invalid_argument("json format eror");
+		}
+
+		if (!root.isArray() || root.empty()){
+			throw std::invalid_argument("json format eror");
+		}
+
+		for (Json::Value::const_iterator pos = root.begin(); pos != root.end(); ++pos){
+			if (!pos->isArray() || pos->empty()){
+				throw std::invalid_argument("json format eror");
+			}else{
+			    std::vector<uint64_t> vec;
+			    for (Json::Value::const_iterator vpos = pos->begin(); vpos != pos->end(); ++vpos){
+			    	vec.push_back(vpos->asUInt64());
+			    }
+			    mat.push_back(vec);
+			}
+		}
+	}
+
 };
 
 #endif /* CHISQUAREKEYWORDEXTRACTOR_H_ */

@@ -11,16 +11,20 @@
 #include <iostream>
 #include "WordVectorJsonStorage.h"
 #include <boost/algorithm/string/join.hpp>
+#include "WordVectorLevelDBStroage.h"
 #include <boost/range/adaptor/transformed.hpp>
 
 int myrandom (int i) { return std::rand()%i;}
 
 #define VAR(var) #var << " = " << var
 
-int main(int argc, const char* argv[])
-{
+
+int main()
+{    
+    int argc = 3;
+    const char* argv[] = {"ShortTextClassfier", "淘宝刷单，保底100/天 ，适合宝妈、学生党，详情请联系QQ:1234312", "5"};
 	if (argc != 3){
-		std::cout << "proc <sms>" << std::endl;
+        std::cout << "proc <sms> <num of keywords>" << std::endl;
 		return -1;
 	}
 
@@ -31,24 +35,21 @@ int main(int argc, const char* argv[])
 
 	int n = ::atoi(argv[2]);
 	boost::shared_ptr<ChiSquareKeyWordExtractor> kw_extractor = ChiSquareKeyWordExtractor::load("model.bin");
+    WordVectorLevelDBStroage<double> wvec_stroage("./wordvector.bin");
+
 	std::vector<std::pair<std::string, double> > kws =
 			kw_extractor->get_top_keywords(filter.filter(argv[1]), n);
 
-	//WordVectorJsonStorage<double> stroage("model.json");
-	std::string word("销量");
-	std::vector<std::vector<uint64_t> > mat = kw_extractor->get_mat(word);
-	double chi = kw_extractor->get_chi(word);
-
-	uint64_t A = mat[0][0];
-	uint64_t B = mat[0][1];
-	uint64_t C = mat[1][0];
-	uint64_t D = mat[1][1];
-
-	std::cout <<  VAR(word) << ": " << VAR(A) << ", " << VAR(B) << ", " << VAR(C) << ", " << VAR(D) << ", " << VAR(chi) << std::endl;
 	std::vector<std::pair<std::string, double> >::const_iterator pos = kws.begin();
+    WordVector<double> doc_vec(250);
+
 	for (; pos != kws.end(); ++pos){
-		std::cout  << "<" << pos->first << ", " << pos->second << ">" << std::endl;
-	}
+		std::cout  << "<" << pos->first << ", " << pos->second << ">" << std::endl;        
+        doc_vec += wvec_stroage.get_wvec(pos->first) * kw_extractor->get_idf(pos->first);
+	}       
+
 	std::cout << std::endl;
+    std::cout << "doc vector = " << doc_vec.to_string() << std::endl;
+
     return 0;
 }

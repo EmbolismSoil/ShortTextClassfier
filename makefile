@@ -5,9 +5,11 @@ OBJ := $(SRC:%.cpp=%.o)
 DEP := $(SRC:%.cpp=%.d)
 
 CXX := g++
-CXXFLAGS := -I./
+CXXFLAGS := -I./ -g
 LIBS += -ljsoncpp
 LIBS += -lleveldb
+
+all: $(APP)
 
 $(APP): $(DEP) $(OBJ)
 	echo $(OBJ)
@@ -19,6 +21,6 @@ sinclude $(DEP)
 .PHONY : clean
 
 clean:
-	rm *.o
-	rm *.d
-	rm $(APP)
+	-rm *.o
+	-rm *.d
+	-rm $(APP)

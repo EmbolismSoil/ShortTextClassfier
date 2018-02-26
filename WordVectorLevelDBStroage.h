@@ -34,11 +34,13 @@ public:
 	}
 
 	virtual ~WordVectorLevelDBStroage(){}
-	virtual std::vector<double> const get_wvec(std::string const& word)
+    virtual WordVector<double> get_wvec(std::string const& word)
 	{
-		std::string vec;
-		_db->Get(leveldb::ReadOptions(), word, &vec);
-		return _parse_vector(vec);
+        std::string svec;
+        _db->Get(leveldb::ReadOptions(), word, &svec);
+        std::vector<double> vec =  _parse_vector(svec);
+        WordVector<double> wvec(vec);
+        return wvec;
 	}
 
 private:

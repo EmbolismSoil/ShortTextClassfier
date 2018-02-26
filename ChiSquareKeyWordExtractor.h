@@ -198,6 +198,11 @@ public:
 		return _mat[word];
 	}
 
+    virtual double const get_idf(std::string const& word)
+    {
+        return _idf(word);
+    }
+
 	virtual ~ChiSquareKeyWordExtractor(){};
 
 private:
@@ -231,10 +236,6 @@ private:
 
 		std::vector<std::vector<uint64_t> > const& mat = _mat[word];
 		double chi = _CHI(mat, _N);
-		double idf = _idf(word);
-		if (idf > 0){
-			return chi * idf;
-		}
 
 		return chi;
 	}

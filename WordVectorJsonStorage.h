@@ -14,6 +14,7 @@
 #include <boost/format.hpp>
 #include <json/json.h>
 #include <boost/algorithm/string.hpp>
+#include <wordvector.h>
 
 template<class T>
 class WordVectorJsonStorage;
@@ -32,7 +33,7 @@ public:
 		}
 	}
 
-	virtual std::vector<int64_t> const get_wvec(std::string const& sms)
+    virtual WordVector<int64_t>  get_wvec(std::string const& sms)
 	{
 		Json::Value vec;
 		if (!(vec = _root[sms].isArray())){
@@ -46,31 +47,11 @@ public:
 			result.push_back(pos->asInt64());
 		}
 
-		return result;
+        WordVector<int64_t> wvec(result);
+        return wvec;
 	}
 
-	std::string get_wvec_as_string(std::string const& sms)
-	{
-		std::vector<int64_t> vec = get_wvec(sms);
-		std::string str_vec;
-		std::vector<std::string> str_vec_dim;
-		std::stringstream ss;
-		if (vec.empty()){
-			return "[]";
-		}
 
-		for (std::vector<int64_t>::const_iterator pos = vec.begin(); pos != vec.end(); ++pos)
-		{
-			ss << *pos;
-			str_vec_dim.push_back(ss.str());
-			ss.clear();
-		}
-
-		str_vec = boost::join(str_vec_dim, ", ");
-		boost::format fmt("[%s]");
-		fmt % str_vec;
-		return fmt.str();
-	}
 
 private:
 	Json::Value _root;
@@ -90,7 +71,7 @@ public:
 		}
 	}
 
-	virtual std::vector<double> const get_wvec(std::string const& sms)
+    virtual WordVector<double>  get_wvec(std::string const& sms)
 	{
 		Json::Value vec;
 		if (!(vec = _root[sms].isArray())){
@@ -104,30 +85,7 @@ public:
 			result.push_back(pos->asDouble());
 		}
 
-		return result;
-	}
-
-	std::string get_wvec_as_string(std::string const& sms)
-	{
-		std::vector<double> vec = get_wvec(sms);
-		std::string str_vec;
-		std::vector<std::string> str_vec_dim;
-		std::stringstream ss;
-		if (vec.empty()){
-			return "[]";
-		}
-
-		for (std::vector<double>::const_iterator pos = vec.begin(); pos != vec.end(); ++pos)
-		{
-			ss << *pos;
-			str_vec_dim.push_back(ss.str());
-			ss.clear();
-		}
-
-		str_vec = boost::join(str_vec_dim, ", ");
-		boost::format fmt("[%s]");
-		fmt % str_vec;
-		return fmt.str();
+        return WordVector<double>(result);
 	}
 
 private:

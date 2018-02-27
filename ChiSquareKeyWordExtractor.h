@@ -145,7 +145,7 @@ public:
 		return result;
 	}
 
-	virtual std::vector<std::pair<std::string, double> > get_top_keywords(std::string const& sms, uint64_t k)
+    virtual std::vector<std::pair<std::string, double> > get_top_keywords(std::string const& sms, uint64_t k)
 	{
 		std::vector<std::string> words;
 		_jieba->Cut(sms, words, true);
@@ -228,7 +228,7 @@ private:
 		_cls = mat.begin()->second.size();
 	}
 
-	double _CHI(std::string const& word)
+    double _CHI(std::string const& word)
 	{
 		if (_mat.find(word) == _mat.end()){
 			return -1.0;
@@ -240,7 +240,7 @@ private:
 		return chi;
 	}
 
-	double _CHI(uint64_t A, uint64_t B, uint64_t C, uint64_t D)
+    double _CHI(uint64_t A, uint64_t B, uint64_t C, uint64_t D)
 	{
 		uint64_t N = A + B + C + D;
 		uint64_t above = (N * (A*D-B*C) * (A*D-B*C));
@@ -255,7 +255,7 @@ private:
 		}
 	}
 
-	double _CHI(std::vector<std::vector<uint64_t> > const& mat, uint64_t N)
+    double _CHI(std::vector<std::vector<uint64_t> > const& mat, uint64_t N)
 	{
 		double chi = 0;
 		double dn = N;
@@ -280,7 +280,7 @@ private:
 		return chi;
 	}
 
-	double _idf(std::string const& word)
+    double _idf(std::string const& word)
 	{
 		if (_mat.find(word) == _mat.end()){
 			return -1.0;
@@ -294,7 +294,7 @@ private:
 	}
 
 	void _get_sum(std::vector<std::vector<uint64_t> > const& mat,
-			size_t const x, size_t const y, uint64_t &x_sum, uint64_t& y_sum)
+            size_t const x, size_t const y, uint64_t &x_sum, uint64_t& y_sum)
 	{
 		x_sum = std::accumulate(mat[x].begin(), mat[x].end(), 0);
 		y_sum = 0;
@@ -392,7 +392,7 @@ private:
 		}
 	}
 
-	static bool _chi_pair_comparetor(std::pair<std::string, double> const& lhs, std::pair<std::string, double> const& rhs)
+    static bool _chi_pair_comparetor(std::pair<std::string, double> const& lhs, std::pair<std::string, double> const& rhs)
 	{
 		return lhs.second < rhs.second;
 	}
@@ -424,7 +424,7 @@ private:
 		return writer.write(json_mat);
 	}
 
-	static void _parse_mat(std::string const& json, std::vector<std::vector<uint64_t> > & mat)
+    static void _parse_mat(std::string const& json, std::vector<std::vector<uint64_t> > & mat)
 	{
 		Json::Reader reader;
 		Json::Value root;

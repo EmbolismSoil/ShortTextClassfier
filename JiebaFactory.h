@@ -22,11 +22,7 @@ public:
 			std::string const USER_DICT_PATH("dict/user.dict.utf8");
 			std::string const IDF_PATH("dict/idf.utf8");
 			std::string const STOP_WORD_PATH("dict/stop_words.utf8");
-			cppjieba::Jieba jieba(DICT_PATH,
-			        HMM_PATH,
-			        USER_DICT_PATH,
-			        IDF_PATH,
-			        STOP_WORD_PATH);
+
 			return boost::shared_ptr<cppjieba::Jieba>(
 					new cppjieba::Jieba(DICT_PATH,
 			        HMM_PATH,

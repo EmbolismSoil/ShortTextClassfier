@@ -47,7 +47,7 @@ private:
 	boost::shared_ptr<leveldb::DB> _db;
 	Json::Reader _reader;
 
-	std::vector<double> _parse_vector(std::string const& vec_json)
+    std::vector<double> _parse_vector(std::string const& vec_json)
 	{
 		Json::Value vec;
 		std::vector<double> result;

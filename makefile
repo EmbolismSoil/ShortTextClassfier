@@ -5,7 +5,7 @@ OBJ := $(SRC:%.cpp=%.o)
 DEP := $(SRC:%.cpp=%.d)
 
 CXX := g++
-CXXFLAGS := -I./ -g
+CXXFLAGS := -I./ -g -std=c++11
 LIBS += -ljsoncpp
 LIBS += -lleveldb
 

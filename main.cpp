@@ -13,33 +13,40 @@
 #include <boost/algorithm/string/join.hpp>
 #include "WordVectorLevelDBStroage.h"
 #include <boost/range/adaptor/transformed.hpp>
+#include <eigen3/Eigen/Dense>
+
 
 int myrandom (int i) { return std::rand()%i;}
 
 #define VAR(var) #var << " = " << var
 
-WordVector<double> get_doc_vec(std::string const& doc, int k,
+using DocVector = Eigen::MatrixXd;
+
+DocVector get_doc_vec(std::string const& doc, int k,
                                ChiSquareKeyWordExtractor & extractor,
                                WordVectorLevelDBStroage<double> & wvec_stroage)
 {
     std::vector<std::pair<std::string, double> > kws = extractor.get_top_keywords(doc, k);
     std::vector<std::pair<std::string, double> >::const_iterator pos = kws.begin();
-    WordVector<double> doc_vec(250);//  dim = 250
+    //WordVector<double> doc_vec(250);//  dim = 250
+    std::vector<double> init_doc_vec(250, 0);
+    DocVector doc_vec = Eigen::VectorXd::Map(&(*init_doc_vec.begin()), init_doc_vec.size());
+
     for (; pos != kws.end(); ++pos){
         try{
-            doc_vec += wvec_stroage.get_wvec(pos->first) * extractor.get_idf(pos->first);
+            doc_vec +=  (wvec_stroage.get_wvec(pos->first) * extractor.get_idf(pos->first));
         }catch(std::invalid_argument const& e){
             continue;
         }
     }
 
-    return doc_vec;
+    return doc_vec.normalized();
 }
 
 int main()
 {    
     int argc = 4;
-    const char* argv[] = {"Class", "淘宝刷单，保底300元/天，适合学生党、宝妈，详情联系马化腾12312142", "网络类诈骗主要包括网络购物、刷单、兼职、办理各项业务、冒充老板诈骗财务人员等", "5"};
+    const char* argv[] = {"Class", "亲，您网购记录良好，现邀请你来店铺刷单，（300元/天现结），适合宝妈，学生，上班族等。即时结算，在家可做，详询加QQ:806343672", "招聘为淘宝商家刷信誉，接到任务后，付款到支付宝拍下宝贝（但不要确认收货），之后我们将货款 报酬支付到您的支付宝，查收后确认收货 好评。报酬丰厚，每小时可赚40元以上", "10"};
     if (argc != 4){
         std::cout << "proc <sms1> <sms2> <num of keywords>" << std::endl;
 		return -1;
@@ -55,12 +62,12 @@ int main()
 	StopWordFilter filter(stop_words);
 
 	boost::shared_ptr<ChiSquareKeyWordExtractor> kw_extractor = ChiSquareKeyWordExtractor::load("model.bin");
-    WordVectorLevelDBStroage<double> wvec_stroage("./wordvector.bin");
+    WordVectorLevelDBStroage<double, 250> wvec_stroage("./wordvector.bin");
 
     int k = ::atoi(argv[3]);
-    WordVector<double> sms1_vec = get_doc_vec(filter.filter(argv[1]), k, *kw_extractor, wvec_stroage);
-    WordVector<double> sms2_vec = get_doc_vec(filter.filter(argv[2]), k, *kw_extractor, wvec_stroage);
+    auto sms1_vec = get_doc_vec(filter.filter(argv[1]), k, *kw_extractor, wvec_stroage);
+    auto sms2_vec = get_doc_vec(filter.filter(argv[2]), k, *kw_extractor, wvec_stroage);
 
-    std::cout << "dot(sms1, sms2) = " << sms1_vec * sms2_vec << std::endl;
+    std::cout << "distance(sms1, sms2) = " << sms2_vec.transpose() * sms1_vec << std::endl;
     return 0;
 }

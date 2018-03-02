@@ -12,14 +12,15 @@
 #include <boost/shared_ptr.hpp>
 #include <json/json.h>
 #include <leveldb/db.h>
+#include <eigen3/Eigen/Dense>
 
-template<class T>
+template<class T, int _DIM=250>
 class WordVectorLevelDBStroage;
 
-template<>
-class WordVectorLevelDBStroage<double>: public WordVectorStorage<double>
-{
+template<int _DIM>
+class WordVectorLevelDBStroage<double, _DIM>{
 public:
+    using Vector =  Eigen::VectorXd;
 	WordVectorLevelDBStroage(std::string const& path)
 	{
 		leveldb::DB* db;
@@ -34,12 +35,16 @@ public:
 	}
 
 	virtual ~WordVectorLevelDBStroage(){}
-    virtual WordVector<double> get_wvec(std::string const& word)
+    virtual Vector get_wvec(std::string const& word)
 	{
         std::string svec;
         _db->Get(leveldb::ReadOptions(), word, &svec);
         std::vector<double> vec =  _parse_vector(svec);
-        WordVector<double> wvec(vec);
+        if (vec.size() != _DIM){
+            throw std::invalid_argument("dim error");
+        }
+
+        Vector wvec = Eigen::VectorXd::Map(&(*vec.begin()), _DIM);
         return wvec;
 	}
 

@@ -8,6 +8,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <stdio.h>
+#include <math.h>
 
 template<class T>
 class WordVector
@@ -20,6 +21,9 @@ public:
     WordVector operator - (WordVector const& rhs);
     WordVector operator * (typename std::vector<T>::value_type num);
     typename std::vector<T>::value_type operator * (WordVector const& rhs);
+    T distance(WordVector const& rhs);
+    T cosine(WordVector & rhs);
+    T mod();
     std::string const to_string();
 
 private:
@@ -27,6 +31,45 @@ private:
     WordVector(){}
 };
 
+template<class T>
+T WordVector<T>::mod()
+{
+    typename std::vector<T>::const_iterator pos = _vec.begin();
+    T sum = 0;
+    for (; pos != _vec.end(); ++pos){
+        T  d = *pos;
+        sum += (d * d);
+    }
+
+    return ::sqrt(sum);
+}
+
+template<class T>
+T WordVector<T>::cosine(WordVector & rhs)
+{
+    if (rhs._vec.size() != _vec.size() || _vec.empty()){
+        throw std::invalid_argument("Dim error");
+    }
+
+    WordVector<T> &lhs = *this;
+    return (lhs * rhs) / (lhs.mod() * rhs.mod());
+}
+
+template<class T>
+T WordVector<T>::distance(WordVector const& rhs)
+{
+    if (rhs._vec.size() != _vec.size() || _vec.empty()){
+        throw std::invalid_argument("Dim error");
+    }
+
+    T sum = 0;
+    for (typename std::vector<T>::size_type pos = 0; pos != _vec.size(); ++pos){
+        T d = _vec[pos] - rhs._vec[pos];
+        sum += (d*d);
+    }
+
+    return ::sqrt(sum);
+}
 
 template<class T>
 WordVector<T>::WordVector(int dim):

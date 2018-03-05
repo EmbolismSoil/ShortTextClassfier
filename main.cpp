@@ -14,11 +14,13 @@
 #include "WordVectorLevelDBStroage.h"
 #include <boost/range/adaptor/transformed.hpp>
 #include <eigen3/Eigen/Dense>
+#include "svmclassifier.h"
 
 
 int myrandom (int i) { return std::rand()%i;}
 
 #define VAR(var) #var << " = " << var
+
 
 using DocVector = Eigen::MatrixXd;
 
@@ -41,6 +43,13 @@ DocVector get_doc_vec(std::string const& doc, int k,
     }
 
     return doc_vec.normalized();
+}
+
+template<class T>
+void to_std_vec(std::vector<T> &std_vec, Eigen::VectorXd const& vec)
+{
+    std_vec.resize(vec.size());
+    Eigen::VectorXd::Map(&std_vec[0], vec.size()) = vec;
 }
 
 int main()
@@ -69,5 +78,16 @@ int main()
     auto sms2_vec = get_doc_vec(filter.filter(argv[2]), k, *kw_extractor, wvec_stroage);
 
     std::cout << "distance(sms1, sms2) = " << sms2_vec.transpose() * sms1_vec << std::endl;
+
+    SVMClassifier classfier;
+    std::vector<double> sms1;
+    std::vector<double> sms2;
+    to_std_vec(sms1, sms1_vec);
+    to_std_vec(sms2, sms2_vec);
+
+    std::vector<std::vector<double>> data = {sms1, sms2};
+    std::vector<double> labels = {1, 0};
+    classfier.train(data, labels);
+    std::cout << classfier.predict(sms1);
     return 0;
 }

@@ -8,6 +8,7 @@ CXX := g++
 CXXFLAGS := -I./ -g -std=c++11
 LIBS += -ljsoncpp
 LIBS += -lleveldb
+LIBS += -lsvm
 
 all: $(APP)
 

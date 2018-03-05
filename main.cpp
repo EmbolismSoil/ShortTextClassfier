@@ -36,13 +36,13 @@ DocVector get_doc_vec(std::string const& doc, int k,
 
     for (; pos != kws.end(); ++pos){
         try{
-            doc_vec +=  (wvec_stroage.get_wvec(pos->first) * extractor.get_idf(pos->first));
+            doc_vec +=  (wvec_stroage.get_wvec(pos->first).normalized() * extractor.get_idf(pos->first));
         }catch(std::invalid_argument const& e){
             continue;
         }
     }
 
-    return doc_vec.normalized();
+    return doc_vec;
 }
 
 template<class T>
@@ -55,8 +55,7 @@ void to_std_vec(std::vector<T> &std_vec, Eigen::VectorXd const& vec)
 int main()
 {    
     int argc = 4;
-    const char* argv[] = {"Class", "亲，您网购记录良好，现邀请你来店铺刷单，（300元/天现结），适合宝妈，学生，上班族等。即时结算，在家可做，详询加QQ:123123", "招聘为淘宝商家刷信誉，接到任务后，付款到支付宝拍下宝贝（但不要确认收货），之后我们将货款 报酬支付到您的支付宝，查收后确认收货 好评。报酬丰厚，每小时可赚40元以上", "10"};
-    if (argc != 4){
+    const char* argv[] = {"Class", "亲，您网购记录良好，现邀请你来店铺刷单，（300元/天现结），适合宝妈，学生，上班族等。即时结算，在家可做，详询加QQ:123123", "您好，鉴于你購物信誉特好，聘请您来帮我店铺刷單（300/天現结）适合宝媽，學生，上班族。用手机就可以工作.詳情加QQ", "5"};    if (argc != 4){
         std::cout << "proc <sms1> <sms2> <num of keywords>" << std::endl;
 		return -1;
 	}
@@ -88,6 +87,6 @@ int main()
     std::vector<std::vector<double>> data = {sms1, sms2};
     std::vector<double> labels = {1, 0};
     classfier.train(data, labels);
-    std::cout << classfier.predict(sms1);
+    std::cout << classfier.predict(sms2);
     return 0;
 }
